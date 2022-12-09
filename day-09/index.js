@@ -1,5 +1,11 @@
 import {readFile} from 'node:fs/promises';
 
+const indexToTrack = 9;
+//const knots = ['H', 'T'];
+const trackingCharacter = 'x';
+const knots = ['H', 1, 2, 3, 4, 5, 6, 7, 8, 9];
+const emptyEntry = [...Array(knots.length)].map(() => '.');
+
 const input = await readFile('./input.txt', 'utf8');
 const testInput = `R 4
 U 4
@@ -18,10 +24,10 @@ const processInput = input =>
 			.map(([direction, count]) => [...Array(+count)].map(() => direction))
 			.reduce((acc,curr) => [...acc, ...curr], []);
 
-const addBottomRow = grid => [...grid, [...Array(grid[0].length)].map(() => (['.','.']))]; 
-const addTopRow = grid => [[...Array(grid[0].length)].map(() => (['.','.'])), ...grid]; 
-const addRightCol = grid => grid.map(x => ([...x,['.','.']]));
-const addLeftCol= grid => grid.map(x => ([['.','.'], ...x]));
+const addBottomRow = grid => [...grid, [...Array(grid[0].length)].map(() => ([...emptyEntry]))]; 
+const addTopRow = grid => [[...Array(grid[0].length)].map(() => ([...emptyEntry])), ...grid]; 
+const addRightCol = grid => grid.map(x => ([...x,[...emptyEntry]]));
+const addLeftCol= grid => grid.map(x => ([[...emptyEntry], ...x]));
 
 const isLeftEdge = ([_, col]) => col === 0;
 const isRightEdge = ([_,col], gridWidth) => col === (gridWidth - 1);
@@ -46,8 +52,6 @@ const getCharLocation = (char, position) => grid => {
 } 
 const getHeadLocation = getCharLocation('H', 0);
 
-const getTailLocation = getCharLocation('T', 1);
-
 const setChar = (char, tuplePosition) => ([row,col], grid) => {
 	grid[row][col][tuplePosition] = char;
 }
@@ -62,7 +66,7 @@ const isSameRow = ([headRow], [tailRow]) => headRow === tailRow;
 const isSameCol =([headRow, headCol], [tailRow, tailCol]) => headCol === tailCol;
 
 const startPosition = [
-	[['H','T']]
+	[[...knots]]
 ];
 
 const moveHead = (grid, direction) => {
@@ -101,38 +105,37 @@ const moveHead = (grid, direction) => {
 		default:
 			break;
 	}
+	//console.log({newHeadLocation})
 	setHead(newHeadLocation, _grid);
 	clearHead(headLocation, _grid);
 	return _grid;
-};
+};				//console.log(_grid)				//console.log(_grid)
 
-const moveTail = (grid) => {
+const moveKnot = (knots, currentKnotIndex, indexToTrack, trackingMarker, grid) => {
 	let _grid =	grid;
-	const headPosition = getHeadLocation(_grid);
-	const [headRow, headCol] = headPosition;
-	const tailPosition = getTailLocation(_grid);
-	const [tailRow, tailCol] = tailPosition;
-	let newTailPosition = tailPosition;
+	const previousKnotLocation = getCharLocation(knots[currentKnotIndex-1], currentKnotIndex-1)(_grid);
+	const [prevRow, prevCol] = previousKnotLocation;
+	const currentKnotLocation = getCharLocation(knots[currentKnotIndex], currentKnotIndex)(_grid);
+	const [currentRow, currentCol] = currentKnotLocation;
+	let newKnotLocation = currentKnotLocation;
 	
-	if(isTouching(headPosition, tailPosition)) {
+	if(isTouching(previousKnotLocation, currentKnotLocation)) {
 		return _grid;
 	}
 
-	if(!isSameCol(headPosition, tailPosition)) {
-		newTailPosition = headCol > tailCol
-			? [newTailPosition[0], newTailPosition[1] + 1] 
-			: [newTailPosition[0], newTailPosition[1] - 1];		
+	if(!isSameCol(previousKnotLocation, currentKnotLocation)) {
+		newKnotLocation = prevCol > currentCol
+			? [newKnotLocation[0], newKnotLocation[1] + 1] 
+			: [newKnotLocation[0], newKnotLocation[1] - 1];		
 	}
 
-	if(!isSameRow(headPosition, tailPosition)) {
-		newTailPosition = headRow > tailRow
-			? [newTailPosition[0] + 1, newTailPosition[1]] 
-			: [newTailPosition[0] - 1, newTailPosition[1]];		
+	if(!isSameRow(previousKnotLocation, currentKnotLocation)) {
+		newKnotLocation = prevRow > currentRow
+			? [newKnotLocation[0] + 1, newKnotLocation[1]] 
+			: [newKnotLocation[0] - 1, newKnotLocation[1]];		
 	}
-
-	setTail(newTailPosition, _grid);
-	clearTail(tailPosition, _grid);
-
+	setChar(knots[currentKnotIndex], currentKnotIndex)(newKnotLocation, _grid);
+	setChar(currentKnotIndex === indexToTrack ? trackingMarker : '.', currentKnotIndex)(currentKnotLocation, _grid);
 	return _grid;
 }
 
@@ -145,11 +148,18 @@ const countChars = (chars, grid) =>
 
 const movements = processInput(input);
 let grid = startPosition;
+
+
 movements.forEach((direction, index) => {
 	grid = moveHead(grid, direction);
-	grid = moveTail(grid);
-	console.log(`${index}. ${direction}`);
+	knots.forEach((_, index) => {
+		if(index === 0) return;
+	  	grid = moveKnot(knots, index, indexToTrack, trackingCharacter, grid);	
+	});
+	//console.log(`${index}. ${direction}`, JSON.stringify(grid));
 });
 
-const part1 = countChars(['t', 'T'], grid);
-console.log('part1', part1);
+//const part1 = countChars(['t', 'T'], grid);
+//console.log('part1', part1);
+const part2 = countChars([9, 'x'], grid);
+console.log('part2', part2);
