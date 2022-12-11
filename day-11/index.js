@@ -1,4 +1,32 @@
-const input = `Monkey 0:
+const testInput = `Monkey 0:
+  Starting items: 79, 98
+  Operation: new = old * 19
+  Test: divisible by 23
+    If true: throw to monkey 2
+    If false: throw to monkey 3
+
+Monkey 1:
+  Starting items: 54, 65, 75, 74
+  Operation: new = old + 6
+  Test: divisible by 19
+    If true: throw to monkey 2
+    If false: throw to monkey 0
+
+Monkey 2:
+  Starting items: 79, 60, 97
+  Operation: new = old * old
+  Test: divisible by 13
+    If true: throw to monkey 1
+    If false: throw to monkey 3
+
+Monkey 3:
+  Starting items: 74
+  Operation: new = old + 3
+  Test: divisible by 17
+    If true: throw to monkey 0
+    If false: throw to monkey 1`;
+
+const prodInput = `Monkey 0:
   Starting items: 59, 74, 65, 86
   Operation: new = old * 19
   Test: divisible by 7
@@ -66,10 +94,10 @@ const extractStartingItems = input =>
 	/Starting items: ((?:\d+,?\s?)+)/mg.exec(input)[1]
 		.trim()
 		.split(/, /g)
-		.map(x => +x);
+		.map(BigInt);
 
 const extractDivisibleBy = input =>
-	+(/divisible by (\d+)/mg.exec(input)[1].trim());
+	BigInt(/divisible by (\d+)/mg.exec(input)[1].trim());
 
 const extractTargetWhenTrue = input =>
 	+(/If true: throw to monkey (\d+)/mg.exec(input)[1].trim());	
@@ -77,8 +105,11 @@ const extractTargetWhenTrue = input =>
 const extractTargetWhenFalse = input =>
 	+(/If false: throw to monkey (\d+)/mg.exec(input)[1].trim());	
 
-const extractOperation = input =>
-	/Operation: new = (.*?)$/mg.exec(input)[1].trim();
+const extractOperation = input => {
+	let operationText = /Operation: new = (.*?)$/mg.exec(input)[1].trim();
+	operationText = /\d$/.test(operationText) ? operationText.concat("n") : operationText;
+	return operationText;
+};
 
 const parseStartingItems = 
 	getSet('rawInput', 'startingItems', extractStartingItems);
@@ -99,7 +130,6 @@ const parseOperation =
 const evalIsEvil = monkey => param => {
 	const old = param;
 	const result = eval(monkey.operationText);
-	console.log(`${monkey.operationText} = ${result}`)
 	return result
 };
 
@@ -120,7 +150,7 @@ const divideByThree = startingItems => startingItems.map(x => Math.floor(x/3));
 const worryDecreaser = getSet('startingItems', 'startingItems', divideByThree);
 
 const exactlyDivisibleBy = divisibleBy => worryLevel => {
-	const result = worryLevel % divisibleBy === 0;
+	const result = worryLevel % divisibleBy === 0n;
 	return result
 };
 const calcDestination = monkey => startingItems => startingItems
@@ -131,18 +161,20 @@ const destinationCalculator = monkey => getSet('startingItems', 'startingItems',
 
 const processStartingItems = pipe(
 	worryIncreaser, 
-	worryDecreaser,
+	// worryDecreaser, // worryDecreaser is not applied for part2!
 	destinationCalculator
 );
 
 const calculateMoves = monkey => {
-	let m = JSON.parse(JSON.stringify(monkey));
+	let m = {...monkey};//JSON.parse(JSON.stringify(monkey));
 	m = processStartingItems(m); 
 	return m;
 }
 
 const playRound = parsedInput => {
-	const x0 = JSON.parse(JSON.stringify(parsedInput));
+	const startingItems = parsedInput.map(x => [...x.startingItems]);
+	const x0 = parsedInput.reduce((acc, curr, index) => acc.concat({...curr, startingItems: startingItems[index]}),[]);
+
 	const reducer = (allMonkeys, currentMonkey, index) => {
 		allMonkeys[index] = calculateMoves(allMonkeys[index]); 
 		allMonkeys[index].startingItems
@@ -156,9 +188,9 @@ const playRound = parsedInput => {
 	return parsedInput.reduce(reducer, x0);
 }
 
-const allRoundsArray = [...Array(20)].map(() => playRound);
+const allRoundsArray = [...Array(1000)].map(() => playRound);
 const playAllRounds = pipe(...allRoundsArray);
 
-const allRoundsResults = playAllRounds(parseInput(input));
+const allRoundsResults = playAllRounds(parseInput(testInput));
 const numberOfInspections = allRoundsResults.map(x => x.inspectionCount);
 console.log([...numberOfInspections.sort((a,b)=> b-a)].slice(0,2).reduce((acc,curr) => acc*curr, 1));
