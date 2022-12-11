@@ -1,32 +1,4 @@
-const testInput = `Monkey 0:
-  Starting items: 79, 98
-  Operation: new = old * 19
-  Test: divisible by 23
-    If true: throw to monkey 2
-    If false: throw to monkey 3
-
-Monkey 1:
-  Starting items: 54, 65, 75, 74
-  Operation: new = old + 6
-  Test: divisible by 19
-    If true: throw to monkey 2
-    If false: throw to monkey 0
-
-Monkey 2:
-  Starting items: 79, 60, 97
-  Operation: new = old * old
-  Test: divisible by 13
-    If true: throw to monkey 1
-    If false: throw to monkey 3
-
-Monkey 3:
-  Starting items: 74
-  Operation: new = old + 3
-  Test: divisible by 17
-    If true: throw to monkey 0
-    If false: throw to monkey 1`;
-
-const prodInput = `Monkey 0:
+const input = `Monkey 0:
   Starting items: 59, 74, 65, 86
   Operation: new = old * 19
   Test: divisible by 7
@@ -142,12 +114,15 @@ const parse = pipe(
 );
 
 const parseInput = input => init(input).map(parse);
-
+const commonMultiple = parseInput(input).map(x => x.divisibleBy).reduce((acc,curr)=> acc*curr,1n);
 const runOperation = monkey => startingItems => startingItems.map(evalIsEvil(monkey));
 const worryIncreaser = monkey => getSet('startingItems', 'startingItems', runOperation(monkey))(monkey); 
 
 const divideByThree = startingItems => startingItems.map(x => Math.floor(x/3));
 const worryDecreaser = getSet('startingItems', 'startingItems', divideByThree);
+
+const moduloOperation = startingItems => startingItems.map(x => x % commonMultiple);
+const moduloDecreaser = getSet('startingItems', 'startingItems',moduloOperation); 
 
 const exactlyDivisibleBy = divisibleBy => worryLevel => {
 	const result = worryLevel % divisibleBy === 0n;
@@ -161,6 +136,7 @@ const destinationCalculator = monkey => getSet('startingItems', 'startingItems',
 
 const processStartingItems = pipe(
 	worryIncreaser, 
+	moduloDecreaser,
 	// worryDecreaser, // worryDecreaser is not applied for part2!
 	destinationCalculator
 );
@@ -188,9 +164,9 @@ const playRound = parsedInput => {
 	return parsedInput.reduce(reducer, x0);
 }
 
-const allRoundsArray = [...Array(1000)].map(() => playRound);
+const allRoundsArray = [...Array(10000)].map(() => playRound);
 const playAllRounds = pipe(...allRoundsArray);
 
-const allRoundsResults = playAllRounds(parseInput(testInput));
+const allRoundsResults = playAllRounds(parseInput(input));
 const numberOfInspections = allRoundsResults.map(x => x.inspectionCount);
 console.log([...numberOfInspections.sort((a,b)=> b-a)].slice(0,2).reduce((acc,curr) => acc*curr, 1));
